@@ -36,7 +36,10 @@ cd $BACKEND_DIR
 npm install
 
 # Start backend with PM2 (adjust your backend entry file if different)
-pm2 start index.js --name myapp-backend
+cd /home/ubuntu/app/myapp-backend
+
+# Start backend with PM2 (using npm start)
+pm2 start npm --name myapp-backend -- start
 pm2 save
 
 # -------------------------------
@@ -68,7 +71,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://127.0.0.1:5000/;
+        proxy_pass http://127.0.0.1:3000/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
