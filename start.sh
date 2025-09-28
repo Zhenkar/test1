@@ -1,32 +1,74 @@
 #!/bin/bash
-
-# Exit on any error
 set -e
 
-# Paths
-FRONTEND_DIST="/home/sat24/Documents/capstone/artgallary/DigitalArtGallery_interface/dist"
-NGINX_SITE="/etc/nginx/sites-available/artgallery"
+# -------------------------------
+# Update & install dependencies
+# -------------------------------
+sudo apt-get update -y
+sudo apt-get upgrade -y
+sudo apt-get install -y curl git nginx
 
-echo "=== Creating Nginx config for Art Gallery ==="
+# Install Node.js (LTS)
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs build-essential
 
-# Write Nginx config
-sudo tee $NGINX_SITE > /dev/null <<EOL
+# Install PM2 globally
+sudo npm install -g pm2
+
+# -------------------------------
+# Setup Application
+# -------------------------------
+APP_DIR="/home/ubuntu/app"
+FRONTEND_DIR="$APP_DIR/myapp-frontend"
+BACKEND_DIR="$APP_DIR/myapp-backend"
+
+# Ensure app folder exists
+mkdir -p $APP_DIR
+cd $APP_DIR
+
+# (If project is in GitHub, clone it — replace with your repo URL)
+# git clone https://github.com/yourusername/your-repo.git $APP_DIR
+
+# -------------------------------
+# Backend setup
+# -------------------------------
+cd $BACKEND_DIR
+npm install
+
+# Start backend with PM2 (adjust your backend entry file if different)
+pm2 start index.js --name myapp-backend
+pm2 save
+
+# -------------------------------
+# Frontend setup
+# -------------------------------
+cd $FRONTEND_DIR
+npm install
+npm run build
+
+# Copy build to nginx web root
+sudo rm -rf /var/www/html/*
+sudo cp -r dist/* /var/www/html/
+
+# -------------------------------
+# Nginx setup
+# -------------------------------
+NGINX_CONF="/etc/nginx/sites-available/myapp"
+sudo tee $NGINX_CONF > /dev/null <<EOL
 server {
     listen 80;
-    server_name localhost;
 
-    # Serve React frontend build
-    root $FRONTEND_DIST;
+    server_name _;
+
+    root /var/www/html;
     index index.html;
 
-    # Frontend routes (React SPA)
     location / {
         try_files \$uri /index.html;
     }
 
-    # Reverse proxy for backend API
     location /api/ {
-        proxy_pass http://localhost:3000/;
+        proxy_pass http://127.0.0.1:5000/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -36,15 +78,14 @@ server {
 }
 EOL
 
-echo "=== Enabling site ==="
-sudo ln -sf $NGINX_SITE /etc/nginx/sites-enabled/artgallery
-
-echo "=== Testing Nginx config ==="
+# Enable nginx config
+sudo ln -sf $NGINX_CONF /etc/nginx/sites-enabled/myapp
+sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
+sudo systemctl restart nginx
 
-echo "=== Reloading Nginx ==="
-sudo systemctl reload nginx
-
-echo "=== Nginx is now serving frontend and reverse proxy for backend ==="
-echo "Frontend: http://localhost"
-echo "Backend API: http://localhost/api"
+echo "---------------------------------"
+echo "🚀 Application setup complete!"
+echo "Frontend available on http://<EC2-Public-IP>/"
+echo "Backend proxied at http://<EC2-Public-IP>/api/"
+echo "---------------------------------"
