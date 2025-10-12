@@ -56,35 +56,7 @@ sudo cp -r dist/* /var/www/html/
 # -------------------------------
 # Nginx setup
 # -------------------------------
-NGINX_CONF="/etc/nginx/sites-available/myapp"
-sudo tee $NGINX_CONF > /dev/null <<EOL
-server {
-    listen 80;
 
-    server_name _;
-
-    root /var/www/html;
-    index index.html;
-
-    location / {
-        try_files \$uri /index.html;
-    }
-
-    location /api/ {
-        proxy_pass http://127.0.0.1:3000/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_cache_bypass \$http_upgrade;
-    }
-}
-EOL
-
-# Enable nginx config
-sudo ln -sf $NGINX_CONF /etc/nginx/sites-enabled/myapp
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t
 sudo systemctl restart nginx
 
 echo "---------------------------------"
