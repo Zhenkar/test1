@@ -46,8 +46,8 @@ export const Register = () => {
       };
 
       // Determine which API to call based on userType
-      // const url = "http://localhost:3000/user/registe";
-      const url = "/api/user/register"
+      const url = "http://localhost:3000/user/register";
+      //const url = "/api/user/register"
 
       // Send form data to the backend
       const response = await axios.post(url, data);
