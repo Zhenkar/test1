@@ -8,7 +8,7 @@ const multer = require('multer');
 
 dotenv.config();
 const app = express();
-const PORT = 3000;
+const PORT = 5000;
 
 app.use(express.json());  // To parse JSON bodies
 
