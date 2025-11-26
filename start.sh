@@ -38,10 +38,12 @@ npm run build
 sudo rm -rf /var/www/html/*
 sudo cp -r dist/* /var/www/html/
 echo "⚙️ Configuring nginx..."
-sudo tee /etc/nginx/sites-available/univ_app >/dev/null <<NGINX
+NGINX_CONF="/etc/nginx/sites-available/myapp"
+sudo tee $NGINX_CONF > /dev/null <<EOL
 server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
+    listen 80;
+
+    server_name _;
 
     root /var/www/html;
     index index.html;
@@ -51,17 +53,20 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://127.0.0.1:5000/;
+        proxy_pass http://127.0.0.1:3000/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header Connection 'upgrade';
         proxy_set_header Host \$host;
         proxy_cache_bypass \$http_upgrade;
     }
 }
-NGINX
-sudo ln -sf /etc/nginx/sites-available/univ_app /etc/nginx/sites-enabled/univ_app
+EOL
+
+# Enable nginx config
+sudo ln -sf $NGINX_CONF /etc/nginx/sites-enabled/myapp
 sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
 sudo systemctl restart nginx
 
 # ========= PM2_REBOOT_SETUP =========
