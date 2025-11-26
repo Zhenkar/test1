@@ -1,67 +1,47 @@
 #!/bin/bash
 set -e
 
-# -------------------------------
-# Update & install dependencies
-# -------------------------------
+# ========= SETUP =========
+APP_DIR="$(pwd)"
+FRONTEND_DIR="${APP_DIR}/myapp-frontend"
+BACKEND_DIR="${APP_DIR}/myapp-backend"
+echo "🚀 Starting deployment from $(pwd)"
+
+# ========= SYSTEM_UPDATE =========
 sudo apt-get update -y
 sudo apt-get upgrade -y
-sudo apt-get install -y curl git nginx
+sudo apt-get install -y curl git nginx build-essential python3-venv
 
-# Install Node.js (LTS)
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs build-essential
+# ========= NODE_INSTALL =========
+if ! command -v node >/dev/null 2>&1; then
+  curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+  sudo apt-get install -y nodejs
+fi
 
-# Install PM2 globally
+# ========= PM2_INSTALL =========
 sudo npm install -g pm2
 
-# -------------------------------
-# Setup Application
-# -------------------------------
-APP_DIR="/home/ubuntu/app"
-FRONTEND_DIR="$APP_DIR/myapp-frontend"
-BACKEND_DIR="$APP_DIR/myapp-backend"
-
-# Ensure app folder exists
-mkdir -p $APP_DIR
-cd $APP_DIR
-
-# (If project is in GitHub, clone it — replace with your repo URL)
-# git clone https://github.com/yourusername/your-repo.git $APP_DIR
-
-# -------------------------------
-# Backend setup
-# -------------------------------
-cd $BACKEND_DIR
+# ========= BACKEND_SETUP =========
+echo "⚙️ Setting up Node.js (Express) backend..."
+cd "$BACKEND_DIR" || exit 1
 npm install
+if [ ! -f .env ]; then echo "❌ .env not found." && exit 1; fi
+pm2 start index.js --name myapp-backend --update-env
 
-# Start backend with PM2 (adjust your backend entry file if different)
-cd /home/ubuntu/app/myapp-backend
-
-# Start backend with PM2 (using npm start)
-pm2 start npm --name myapp-backend -- start
-pm2 save
-
-# -------------------------------
-# Frontend setup
-# -------------------------------
-cd $FRONTEND_DIR
-npm install
+# ========= FRONTEND_SETUP =========
+echo "⚙️ Building React frontend..."
+cd "$FRONTEND_DIR" || exit 1
+npm install 
 npm run build
 
-# Copy build to nginx web root
+# ========= NGINX_CONFIG =========
 sudo rm -rf /var/www/html/*
-sudo cp -r dist/* /var/www/html/
-
-# -------------------------------
-# Nginx setup
-# -------------------------------
-NGINX_CONF="/etc/nginx/sites-available/myapp"
-sudo tee $NGINX_CONF > /dev/null <<EOL
+sudo cp -r build/* /var/www/html/
+echo "⚙️ Configuring nginx..."
+sudo tee /etc/nginx/sites-available/univ_app >/dev/null <<NGINX
 server {
-    listen 80;
-
-    server_name _;
+    listen 80 default_server;
+    listen [::]:80 default_server;
 
     root /var/www/html;
     index index.html;
@@ -71,24 +51,22 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://127.0.0.1:3000/;
+        proxy_pass http://127.0.0.1:5000/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host \$host;
         proxy_cache_bypass \$http_upgrade;
     }
 }
-EOL
-
-# Enable nginx config
-sudo ln -sf $NGINX_CONF /etc/nginx/sites-enabled/myapp
+NGINX
+sudo ln -sf /etc/nginx/sites-available/univ_app /etc/nginx/sites-enabled/univ_app
 sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t
 sudo systemctl restart nginx
 
-echo "---------------------------------"
-echo "🚀 Application setup complete!"
-echo "Frontend available on http://<EC2-Public-IP>/"
-echo "Backend proxied at http://<EC2-Public-IP>/api/"
-echo "---------------------------------"
+# ========= PM2_REBOOT_SETUP =========
+pm2 save
+pm2 startup systemd -u ubuntu --hp /home/ubuntu
+
+# ========= DEPLOYMENT_COMPLETE =========
+echo "✅ Deployment completed!"
