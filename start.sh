@@ -26,7 +26,7 @@ echo "⚙️ Setting up Node.js (Express) backend..."
 cd "$BACKEND_DIR" || exit 1
 npm install
 if [ ! -f .env ]; then echo "❌ .env not found." && exit 1; fi
-pm2 start index.js --name myapp-backend --update-env
+pm2 start npm --name myapp-backend -- start
 
 # ========= FRONTEND_SETUP =========
 echo "⚙️ Building React frontend..."
@@ -53,7 +53,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://127.0.0.1:3000/;
+        proxy_pass http://127.0.0.1:5000/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
