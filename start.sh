@@ -36,7 +36,7 @@ npm run build
 
 # ========= NGINX_CONFIG =========
 sudo rm -rf /var/www/html/*
-sudo cp -r build/* /var/www/html/
+sudo cp -r dist/* /var/www/html/
 echo "⚙️ Configuring nginx..."
 sudo tee /etc/nginx/sites-available/univ_app >/dev/null <<NGINX
 server {
