@@ -5,7 +5,7 @@
   "main": "index.js",
 "scripts": {
   "init-db": "node initDb.js",
-  "start": "npm run init-db && nodemon main.js"
+  "start": "npm run init-db && nodemon index.js"
 },
   "keywords": [],
   "author": "",
